@@ -1,0 +1,3 @@
+dynamicWaveMakerFvMesh.C
+
+LIB = $(FOAM_USER_LIBBIN)/libdynamicWaveMakerFvMesh

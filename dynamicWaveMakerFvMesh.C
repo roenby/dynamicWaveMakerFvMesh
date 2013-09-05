@@ -86,7 +86,8 @@ Foam::dynamicWaveMakerFvMesh::dynamicWaveMakerFvMesh(const IOobject& io)
 	forAll(p,ip)
 	{
 		scalar xp = p[ip].component(vector::X);
-		if ( xp <= xr_ ) //Points with x>xr_ (typically most points) will be stationary.
+		scalar yp = p[ip].component(vector::Y);
+		if ( xp <= xr_ && (yp >= yMin_ && yp <= yMax_) ) //Points not satisfying this condition (typically most points) will be stationary.
 		{
 			scalar yp = p[ip].component(vector::Y) - 1e-6*(yMax_-yMin_);
 			label pistonInd = max(0,floor((yp-yMin_)/pistonWidth)); //Together the small value subtracted from yp and the max(0,...) prevents pistonInd>nPistons_-1 when yp=yMax_. 

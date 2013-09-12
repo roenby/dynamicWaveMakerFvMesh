@@ -67,7 +67,8 @@ Foam::dynamicWaveMakerFvMesh::dynamicWaveMakerFvMesh(const IOobject& io)
     yMin_(readScalar(dynamicMeshCoeffs_.lookup("yMin"))),
     yMax_(readScalar(dynamicMeshCoeffs_.lookup("yMax"))),
     repetitions_(dynamicMeshCoeffs_.lookupOrDefault("repetitions",1.0)),
-    useSplineInterpolation_(dynamicMeshCoeffs_.lookupOrDefault("spline",false)),
+    timeInterpolation_(dynamicMeshCoeffs_.lookupOrDefault<word>("timeInterpolation","spline")),
+    spaceInterpolation_(dynamicMeshCoeffs_.lookupOrDefault<word>("spaceInterpolation","linear")),
 	yPistonCentres_(nPistons_),
     pointsAssociatedWithPistons_(nPistons_),
     xOrg_(nPistons_)
@@ -131,13 +132,17 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 		scalarField xPist(nPistons_);
 		forAll(xPist,ip)
 		{
-			if ( useSplineInterpolation_ )
+			if ( timeInterpolation_ == "spline" )
 			{
 				xPist[ip] = Foam::interpolateSplineXY(t, times_, pistonPositions_[ip]);
 			}
-			else
+			else if (timeInterpolation_ == "linear" )
 			{
 				xPist[ip] = Foam::interpolateXY(t, times_, pistonPositions_[ip]);
+			}
+			else
+			{
+				Info << "Warning: unknown timeInterpolation method (options: linear and spline)" << endl;				
 			}
 		}
 		
@@ -166,13 +171,17 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 			}
 			//The n'th element in Xp below will be the piston position in front of the moving mesh point with index iPoint[n].
 			scalarField Xp(Yp.size());
-			if ( useSplineInterpolation_ )
+			if ( spaceInterpolation_ == "spline" )
 			{
 				Xp = Foam::interpolateSplineXY(Yp, Yi, Xi);
 			}
-			else
+			else if ( spaceInterpolation_ == "linear" )
 			{
 				Xp = Foam::interpolateXY(Yp, Yi, Xi);
+			}
+			else
+			{
+				Info << "Warning: unknown spaceInterpolation method (options: linear and spline)" << endl;
 			}
 			
 			//Changing x-coordinate of all moving points

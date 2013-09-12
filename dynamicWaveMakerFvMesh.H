@@ -87,8 +87,11 @@ class dynamicWaveMakerFvMesh
         //- Number of times to repeat tabulated piston motion (default = 1) 
 		scalar repetitions_;
 
-        //- Number of times to repeat tabulated piston motion (default = 1) 
-		bool useSplineInterpolation_;
+        //- Interpolation method for piston positions between listed times (default = spline) 
+		word timeInterpolation_;
+
+        //- Interpolation method for positions between listed piston positions (default = linear) 
+		word spaceInterpolation_;
 
 		//- Y coordinate of piston centres 
 		scalarField yPistonCentres_;

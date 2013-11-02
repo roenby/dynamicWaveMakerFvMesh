@@ -125,6 +125,9 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 	{
 			t = fmod(t,period);
 	}
+
+	//Copy of all mesh points to be modified and handed to fvMesh::movePoints below
+	pointField p(points());
 		
     if ( t <= max(times_) && t>=min(times_) ) 
     {
@@ -157,9 +160,6 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 		}
 		Xi[nPistons_+1] = xPist[nPistons_-1];
 		Yi[nPistons_+1] = yMax_;
-
-		//Copy of all mesh points to be modified and handed to fvMesh::movePoints
-		pointField p(points());
 		
 		forAll(yPistonCentres_,iPist)
 		{
@@ -208,27 +208,28 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 				p[iPoint[ip]].replace(vector::X, x);
 			}
 		}
-
-		scalar newPositionCalculationTime = time().elapsedCpuTime() - timeBeforeMeshUpdate;
-
-		fvMesh::movePoints(p);
-
-		if (foundObject<volVectorField>("U"))
-		{
-			volVectorField& U =
-				const_cast<volVectorField&>(lookupObject<volVectorField>("U"));
-			U.correctBoundaryConditions();
-		}
-		if (foundObject<volVectorField>("alpha1"))
-		{
-			volScalarField& alpha1 =
-				const_cast<volScalarField&>(lookupObject<volScalarField>("alpha1"));
-			alpha1.correctBoundaryConditions();
-		}
-
-		Info<< "Time spent on mesh update: " <<  time().elapsedCpuTime() - timeBeforeMeshUpdate <<
-				"s, hereof " << newPositionCalculationTime << "s on new point calculation." << endl;
+		
 	}
+
+	scalar newPositionCalculationTime = time().elapsedCpuTime() - timeBeforeMeshUpdate;
+
+	fvMesh::movePoints(p);
+
+	if (foundObject<volVectorField>("U"))
+	{
+		volVectorField& U =
+			const_cast<volVectorField&>(lookupObject<volVectorField>("U"));
+		U.correctBoundaryConditions();
+	}
+	if (foundObject<volVectorField>("alpha1"))
+	{
+		volScalarField& alpha1 =
+			const_cast<volScalarField&>(lookupObject<volScalarField>("alpha1"));
+		alpha1.correctBoundaryConditions();
+	}
+
+	Info<< "Time spent on mesh update: " <<  time().elapsedCpuTime() - timeBeforeMeshUpdate <<
+			"s, hereof " << newPositionCalculationTime << "s on new point calculation." << endl;
 
     return true;
 }

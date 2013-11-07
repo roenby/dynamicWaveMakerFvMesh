@@ -64,42 +64,57 @@ Foam::dynamicWaveMakerFvMesh::dynamicWaveMakerFvMesh(const IOobject& io)
     nPistons_(pistonPositions_.size()),
     xl_(readScalar(dynamicMeshCoeffs_.lookup("xLeft"))),
     xr_(readScalar(dynamicMeshCoeffs_.lookup("xRight"))),
-    yMin_(readScalar(dynamicMeshCoeffs_.lookup("yMin"))),
-    yMax_(readScalar(dynamicMeshCoeffs_.lookup("yMax"))),
     repetitions_(dynamicMeshCoeffs_.lookupOrDefault("repetitions",1.0)),
     timeInterpolation_(dynamicMeshCoeffs_.lookupOrDefault<word>("timeInterpolation","spline")),
     spaceInterpolation_(dynamicMeshCoeffs_.lookupOrDefault<word>("spaceInterpolation","linear")),
 	yPistonCentres_(nPistons_),
-    pointsAssociatedWithPistons_(nPistons_),
-    xOrg_(nPistons_)
+	nMovingPoints_(sum(neg(points().component(vector::X)-xr_))),
+	movingPoints_(nMovingPoints_),
+	xOriginal_(nMovingPoints_),
+	yOriginal_(nMovingPoints_),
+	writePositionsToLogFile_(dynamicMeshCoeffs_.lookupOrDefault<bool>("positionsToLog",0)),
+	amplificationFactor_(dynamicMeshCoeffs_.lookupOrDefault("amplification",1.0))
 {
     Info<< "Creating dynamicWaveMakerFvMesh... " << endl;
-	
-	//Calculating y coordinates of piston centre positions
-	scalar pistonWidth = (yMax_-yMin_)/nPistons_;
-	forAll(yPistonCentres_,iPist)
-	{
-		yPistonCentres_[iPist] = yMin_ + (.5+iPist)*pistonWidth;
-	}
 
-	//Identifying which of the moving points that belong to which piston
+	//Amplifying/attenuating signal
+	pistonPositions_ = amplificationFactor_*pistonPositions_;
+	
+	//Finding moving mesh points
 	const pointField& p = points();
-	forAll(p,ip)
+	scalarField isMoving(neg(p.component(vector::X)-xr_));
+	label iMov(-1);
+	forAll(isMoving,ip)
 	{
-		scalar xp = p[ip].component(vector::X);
-		scalar yp = p[ip].component(vector::Y);
-		if ( xp <= xr_ && (yp >= yMin_ && yp <= yMax_) ) //Points not satisfying this condition (typically most points) will be stationary.
+		if (isMoving[ip])
 		{
-			scalar yp = p[ip].component(vector::Y) - 1e-6*(yMax_-yMin_);
-			label pistonInd = max(0,floor((yp-yMin_)/pistonWidth)); //Together the small value subtracted from yp and the max(0,...) prevents pistonInd>nPistons_-1 when yp=yMax_. 
-			pointsAssociatedWithPistons_[pistonInd].append(ip);
-			xOrg_[pistonInd].append(xp);
+			iMov++;
+			movingPoints_[iMov] = ip;
+			xOriginal_[iMov] = p[ip].component(vector::X);
+			yOriginal_[iMov] = p[ip].component(vector::Y);
 		}
 	}
-	forAll(xOrg_,iPist) 
+	
+	//Reading piston y-positions
+	if (dynamicMeshCoeffs_.found("yPiston")) 
 	{
-		pointsAssociatedWithPistons_[iPist].shrink();
-		xOrg_[iPist].shrink();
+		yPistonCentres_ = dynamicMeshCoeffs_.lookup("yPiston");	
+	} 
+	else //NOTE: This I have found to crash for some parallel runs with certain decompositions. Can be fixed by writing to binary or increasing writePrecision.
+	{
+		Info << "yPiston not found. Distributing pistons uniformly between y = " 
+			<< gMax(yOriginal_) << " and "
+			<< gMin(yOriginal_) << endl;
+
+		scalar pistonWidth = (gMax(yOriginal_)-gMin(yOriginal_))/(nPistons_ - 1);
+		forAll(yPistonCentres_,ip)
+		{
+			yPistonCentres_[ip] = gMin(yOriginal_) + ip*pistonWidth;
+		}
+	}
+	if (writePositionsToLogFile_)
+	{
+		Info << "Piston y-positions: " << yPistonCentres_ << endl;
 	}
 	update();
 	write();
@@ -149,66 +164,60 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 			}
 		}
 		
+		if (writePositionsToLogFile_)
+		{
+			Info << "Piston x-positions: " << xPist << endl;
+		}
+
 		//Creating piston position x and y arrays for use in subsequent interpolation
 		scalarField Xi(nPistons_+2), Yi(nPistons_+2);
 		Xi[0] = xPist[0];
-		Yi[0] = yMin_;
+		Yi[0] = -1e10;
 		forAll(xPist,ix) 
 		{
 			Xi[ix+1] = xPist[ix];
 			Yi[ix+1] = yPistonCentres_[ix];
 		}
 		Xi[nPistons_+1] = xPist[nPistons_-1];
-		Yi[nPistons_+1] = yMax_;
-		
-		forAll(yPistonCentres_,iPist)
+		Yi[nPistons_+1] = 1e10;
+
+		scalarField XNEW(nMovingPoints_);
+		if ( spaceInterpolation_ == "spline" )
 		{
-			labelList iPoint = pointsAssociatedWithPistons_[iPist];
-			scalarField Yp(iPoint.size());
-			forAll(Yp,iy)
-			{
-				Yp[iy] = p[iPoint[iy]].component(vector::Y);
-			}
-			//The n'th element in Xp below will be the piston position in front of the moving mesh point with index iPoint[n].
-			scalarField Xp(Yp.size());
-			if ( spaceInterpolation_ == "spline" )
-			{
-				Xp = Foam::interpolateSplineXY(Yp, Yi, Xi);
-			}
-			else if ( spaceInterpolation_ == "linear" )
-			{
-				Xp = Foam::interpolateXY(Yp, Yi, Xi);
-			}
-			else
-			{
-				Info << "Warning: unknown spaceInterpolation method (options: linear and spline)" << endl;
-			}
-			
-			//Changing x-coordinate of all moving points
-			scalar xmid(0.5*(xl_+xr_)), L(0.5*(xr_-xl_)), X(0.0);
-			forAll(iPoint,ip)
-			{	
-				scalar x = xOrg_[iPist][ip];
-				if ( x < xl_ ) 
-				{
-					x = (x + Xp[ip]);
-				}
-				else if ( x >= xl_ && x < xmid ) 
-				{
-					X = x - xl_;
-					X = X*(1 - .5*(X/L)*(Xp[ip]/L));
-					x = X + xl_ + Xp[ip];
-				}
-				else if ( x >= xmid && x < xr_ ) 
-				{
-					X = -(x - xr_);
-					X = X*(1 - 0.5*(X/L)*(Xp[ip]/L));
-					x = xr_ - X;
-				}
-				p[iPoint[ip]].replace(vector::X, x);
-			}
+			XNEW = Foam::interpolateSplineXY(yOriginal_, Yi, Xi);
 		}
-		
+		else if ( spaceInterpolation_ == "linear" )
+		{
+			XNEW = Foam::interpolateXY(yOriginal_, Yi, Xi);
+		}
+		else
+		{
+			Info << "Warning: unknown spaceInterpolation method (options: linear and spline)" << endl;
+		}
+
+		//Changing x-coordinate of all moving points
+		scalar xmid(0.5*(xl_+xr_)), L(0.5*(xr_-xl_)), X(0.0);
+		forAll(movingPoints_,ip)
+		{	
+			scalar x = xOriginal_[ip];
+			if ( x < xl_ ) 
+			{
+				x = (x + XNEW[ip]);
+			}
+			else if ( x >= xl_ && x < xmid ) 
+			{
+				X = x - xl_;
+				X = X*(1 - .5*(X/L)*(XNEW[ip]/L));
+				x = X + xl_ + XNEW[ip];
+			}
+			else if ( x >= xmid && x < xr_ ) 
+			{
+				X = -(x - xr_);
+				X = X*(1 - 0.5*(X/L)*(XNEW[ip]/L));
+				x = xr_ - X;
+			}
+			p[movingPoints_[ip]].replace(vector::X, x);
+		}
 	}
 
 	scalar newPositionCalculationTime = time().elapsedCpuTime() - timeBeforeMeshUpdate;

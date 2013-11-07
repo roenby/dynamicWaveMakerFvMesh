@@ -78,12 +78,6 @@ class dynamicWaveMakerFvMesh
 		//- Right bound of region with extracting/contracting cells
 		scalar xr_;
 
-		//- First piston starts at yMin_
-		scalar yMin_;
-		
-		//- Last piston ends at yMax_ (Total wave maker length in y-direction = yMax_ - yMin_) 
-		scalar yMax_;
-
         //- Number of times to repeat tabulated piston motion (default = 1) 
 		scalar repetitions_;
 
@@ -96,13 +90,24 @@ class dynamicWaveMakerFvMesh
 		//- Y coordinate of piston centres 
 		scalarField yPistonCentres_;
 
-		//- List of nPistons_ labelLists each containing the 
-		//- indices of the moving points associated with this piston
-		List<DynamicList<label> > pointsAssociatedWithPistons_;
+		//- Number of moving mesh points 
+		int nMovingPoints_;	
+		
+		//- Indices of moving points in points file
+		labelList movingPoints_;
+		
+		//- Original x-coordinates of moving points
+		scalarField xOriginal_;
+		
+		//- y-coordinate of moving points
+		scalarField yOriginal_;
 
-		//- Original x coordinate of moving points
-		List<DynamicList<scalar> > xOrg_;
+		//- Should piston positions be written to log (default: no) 
+		bool writePositionsToLogFile_;
 
+		//- Optional factor multiplied on piston positions to amplify aor attenuate them
+		scalar amplificationFactor_;
+		
 		// Private Member Functions
 
         //- Disallow default bitwise copy construct

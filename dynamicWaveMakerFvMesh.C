@@ -106,10 +106,10 @@ Foam::dynamicWaveMakerFvMesh::dynamicWaveMakerFvMesh(const IOobject& io)
 			<< gMax(yOriginal_) << " and "
 			<< gMin(yOriginal_) << endl;
 
-		scalar pistonWidth = (gMax(yOriginal_)-gMin(yOriginal_))/(nPistons_ - 1);
+		scalar pistonWidth = (gMax(yOriginal_)-gMin(yOriginal_))/nPistons_ ;
 		forAll(yPistonCentres_,ip)
 		{
-			yPistonCentres_[ip] = gMin(yOriginal_) + ip*pistonWidth;
+			yPistonCentres_[ip] = gMin(yOriginal_) + (ip+0.5)*pistonWidth;
 		}
 	}
 	if (writePositionsToLogFile_)

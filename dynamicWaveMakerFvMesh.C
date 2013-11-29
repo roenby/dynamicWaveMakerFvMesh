@@ -100,7 +100,7 @@ Foam::dynamicWaveMakerFvMesh::dynamicWaveMakerFvMesh(const IOobject& io)
 	{
 		yPistonCentres_ = dynamicMeshCoeffs_.lookup("yPiston");	
 	} 
-	else //NOTE: This I have found to crash for some parallel runs with certain decompositions. Can be fixed by writing to binary or increasing writePrecision.
+	else
 	{
 		Info << "yPiston not found. Distributing pistons uniformly between y = " 
 			<< gMax(yOriginal_) << " and "

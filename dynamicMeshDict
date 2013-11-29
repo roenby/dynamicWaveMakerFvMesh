@@ -1,0 +1,45 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh   dynamicWaveMakerFvMesh;
+
+dynamicWaveMakerFvMeshCoeffs
+{
+
+	times 7 ( 0 .1 .2 .3 .4 .5 .6 );
+
+	pistonPositions 5
+	(
+		10 ( 0 .1 .2 .3 .4 .5 .6 );
+		10 ( 0 .1 .2 .3 .4 .5 .6 );
+		10 ( 0 .1 .2 .3 .4 .5 .6 );
+		10 ( 0 .1 .2 .3 .4 .5 .6 );
+		10 ( 0 .1 .2 .3 .4 .5 .6 );
+	);
+
+	xLeft	1;
+	xRight	5;
+
+//	yPiston  5 ( -2 -1 0 1 2 );
+//	positionsToLog	no;
+//	amplification	.1;
+//	repetitions	2;
+//	timeInterpolation	linear;
+//	spaceInterpolation	spline;
+}
+
+// ************************************************************************* //

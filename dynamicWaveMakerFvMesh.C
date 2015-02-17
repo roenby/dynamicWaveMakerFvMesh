@@ -237,8 +237,8 @@ bool Foam::dynamicWaveMakerFvMesh::update()
 		alpha1.correctBoundaryConditions();
 	}
 
-	Info<< "Time spent on mesh update: " <<  time().elapsedCpuTime() - timeBeforeMeshUpdate <<
-			"s, hereof " << newPositionCalculationTime << "s on new point calculation." << endl;
+//	Info<< "Time spent on mesh update: " <<  time().elapsedCpuTime() - timeBeforeMeshUpdate <<
+//			"s, hereof " << newPositionCalculationTime << "s on new point calculation." << endl;
 
     return true;
 }

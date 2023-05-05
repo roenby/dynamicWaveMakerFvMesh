@@ -98,7 +98,7 @@ Foam::dynamicWaveMakerFvMesh::dynamicWaveMakerFvMesh(const IOobject& io)
 	//Reading piston y-positions
 	if (dynamicMeshCoeffs_.found("yPiston")) 
 	{
-		yPistonCentres_ = dynamicMeshCoeffs_.lookup("yPiston");	
+		yPistonCentres_ = readScalar(dynamicMeshCoeffs_.lookup("yPiston"));
 	} 
 	else
 	{
